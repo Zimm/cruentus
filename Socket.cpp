@@ -7,7 +7,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/uio.h>
+#ifndef __APPLE__
 #include <sys/sendfile.h>
+#endif
 #include "Socket.h"
 
 using namespace std;
@@ -167,7 +169,7 @@ void Socket::sendFile(int socket, std::string file) {
 		return;
 	}
 	off_t leng;
-#ifdef __bsdi__
+#ifdef __APPLE__
 	sendfile(filed, socket, 0, &leng, NULL, 0);
 #else
 	struct stat st;
