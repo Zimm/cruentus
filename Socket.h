@@ -4,10 +4,8 @@
 #ifndef SOCKET_H
 #define SOCKET_H
 
-#define BACKLOG 199
+#define BACKLOG 10
 #define THREADING
-#define DEBUGSOCK
-#define SOCKBUG
 
 class Socket {
                 int *socket_;
