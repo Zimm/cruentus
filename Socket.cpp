@@ -5,6 +5,8 @@
 #include <pthread.h>
 #include <iostream>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/uio.h>
 #include "Socket.h"
 
 using namespace std;
@@ -69,9 +71,9 @@ void Socket::bind(uint16_t port) {
                 return;
 
 	}
-
+#ifdef DEBUG
 	cout << "Binded to port " << ntohs(address.sin_port) << endl;
-
+#endif
 }
 
 
@@ -82,37 +84,55 @@ void Socket::listen() {
 void Socket::listen(int backlog) {
 	if (::listen(*socket_, backlog) == -1) {
                 fprintf(stderr, "Failed to open socket\n");
-                return;
+                exit(-1);
         }
 }
 
+
+static int lastSocket = -1;
 
 void Socket::accept(void *(*start_routine)(void*)) {
 	while (1) {
 		struct sockaddr_in inAddress;
 		int socklen = sizeof(sockaddr_in);
-		cout << "Waiting for a connection...." << endl;
 		int openedSocket = ::accept(*socket_, (struct sockaddr *)&inAddress, (socklen_t *)&socklen);
-		cout << "Connected!" << endl;
 		if (openedSocket < 0) {
 			fprintf(stderr, "Failed to accept incoming socket\n");
-			return;
-		}
-		pthread_t newThread;
-		cout << "Creating new thread for socket "<< openedSocket << endl;
-		int rc = pthread_create(&newThread, NULL, start_routine, (void*)&openedSocket);
-		cout << "Created new thread " << rc << endl;
-		if (rc){
-         		fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 			exit(-1);
 		}
+		if (openedSocket != lastSocket) {
+#ifdef DEBUGSOCK
+			cout << "Closing " << lastSocket << endl;
+#endif
+			close(lastSocket);
+			lastSocket = openedSocket;
+		}
+#ifdef SOCKBUG
+		cout << "Got socket " << openedSocket << endl;
+#endif
+#ifdef PROCS
+		if (fork() == 0) {
+#endif
+#ifdef THREADING
+			pthread_t newThread;
+			int rc = pthread_create(&newThread, NULL, start_routine, (void*)&openedSocket);
+			if (rc){
+         			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+				exit(-1);
+			}
+#else
+			start_routine((void*)&openedSocket);
+#endif
+#ifdef PROCS	
+			break;
+		}
+#endif
 	}
 }
 
 extern "C" void *tester(void *socket) {
 
 	int sock = *((int*)socket);
-	cout << "Created this thread with sock " << sock << endl;
 	while (1) {
 		int bufsize=1024;
 		char *buffer = (char *)calloc(1,bufsize);
@@ -120,10 +140,36 @@ extern "C" void *tester(void *socket) {
 		
 		cout << buffer << endl;
 	}
+	return NULL;
 }
 	
 
 void Socket::accept() {
 	accept(tester);
+}
+
+void Socket::send(int socket, std::string message) {
+#ifdef DEBUG	
+	cout<<"Sending " << message.c_str() << endl;
+#endif
+	::send(socket, message.c_str(), message.length(), 0);
+
+}
+
+void Socket::sendFile(int socket, std::string file) {
+#ifdef DEBUG
+	cout << "Sending file " << file << endl;
+#endif
+	int filed = open(file.c_str(), O_RDONLY);
+	if (filed == -1) {
+		cout << "Failed to open " << file << " for reading" << endl;
+		return;
+	}
+	off_t leng;
+	sendfile(filed, socket, 0, &leng, NULL, 0);
+#ifdef DEBUG
+	cout << "Sent " << leng << " bytes" << endl;
+#endif
+	close(filed);
 }
 

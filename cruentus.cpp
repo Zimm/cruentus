@@ -1,15 +1,56 @@
 #include <iostream>
 #include "Socket.h"
+#ifdef Web_Server
+#include "Server.h"
+#endif
 
 using namespace std;
 
-int main(int argc, char **argv) {
 
+int main(int argc, char **argv) {
+	
+	uint16_t aport = 7331;
+
+	for (int i = 1; i < argc; i++) {
+	
+		if (strncmp(argv[i], "--root=", 7) == 0) {
+			string root(argv[i]);	
+			root = root.substr(7);
+			if (strncmp(root.c_str(), "~", 1) == 0) {
+				root = root.substr(1);
+				char *home = getenv("HOME");
+				root = string(home).append(root);
+			}
+			cout << "Changing root to " << root << endl;
+			if (chdir(root.c_str()) != 0) {
+				cout << "Failed to change to root " << root << endl;
+			}
+		} else if (strncmp(argv[i], "--port=", 7) == 0) {
+			string port(argv[i]);
+			port = port.substr(7);
+			cout << "Changing port to " << port << endl;
+			aport = atoi(port.c_str());
+#ifdef Web_Server
+		} else if (strncmp(argv[i], "--utility", 9) == 0) {
+			cout << "Setting utility on" << endl;
+			server_setUtility(true);
+#endif
+		} else {
+			cout << "Illiegal option " << argv[i] << endl;
+			exit(-1);
+		}
+		
+	}
+	
 	Socket *sock = new Socket();
 
-	sock->bind(7777);
-	sock->listen();
+	sock->bind(aport);
+	sock->listen(BACKLOG);
+#ifdef Web_Server
+	sock->accept(server);
+#else
 	sock->accept();
+#endif
 	
 	delete sock;
 
