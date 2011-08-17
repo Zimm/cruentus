@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/uio.h>
+#include <sys/sendfile.h>
 #include "Socket.h"
 
 using namespace std;
@@ -166,7 +167,18 @@ void Socket::sendFile(int socket, std::string file) {
 		return;
 	}
 	off_t leng;
+#ifdef __bsdi__
 	sendfile(filed, socket, 0, &leng, NULL, 0);
+#else
+	struct stat st;
+	if (stat(file.c_str(), &st) != 0) {
+		cout << "No file found at " << file << endl;
+		close(filed);
+		return;
+	}
+	sendfile(filed, socket, NULL, st.st_size);
+	leng = st.st_size;
+#endif
 #ifdef DEBUG
 	cout << "Sent " << leng << " bytes" << endl;
 #endif

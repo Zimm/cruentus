@@ -1,4 +1,8 @@
 #include <iostream>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "Socket.h"
 #ifdef Web_Server
 #include "Server.h"

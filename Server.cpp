@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <string.h>
 #include "Socket.h"
 #include "Server.h"
 
