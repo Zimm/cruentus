@@ -42,7 +42,7 @@ void server_setUtility(bool ut) {
 void *server(void *socket) {
 	int sock = *((int*)socket);
 #ifdef DEBUGSOCK
-	cout << "Got socket " << sock << endl;
+	cout << pthread_self() << ": Got socket " << sock << endl;
 #endif
 	int bufsize=1024;
 	char *buffer = (char *)calloc(1,bufsize);
@@ -154,6 +154,12 @@ void *server(void *socket) {
 		Socket::sendFile(sock, request);
 	
 	}
+#ifdef DEBUGSOCK
+	cout << pthread_self() << ": Closing socket" << sock << endl;
+#endif
+#ifndef TESTSOCK
+	close(sock);
+#endif
 	free(buffer);
 	return NULL;
 }

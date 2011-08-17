@@ -88,8 +88,9 @@ void Socket::listen(int backlog) {
         }
 }
 
-
+#ifdef TESTSOCK
 static int lastSocket = -1;
+#endif
 
 void Socket::accept(void *(*start_routine)(void*)) {
 	while (1) {
@@ -100,13 +101,12 @@ void Socket::accept(void *(*start_routine)(void*)) {
 			fprintf(stderr, "Failed to accept incoming socket\n");
 			exit(-1);
 		}
+#ifdef TESTSOCK
 		if (openedSocket != lastSocket) {
-#ifdef DEBUGSOCK
-			cout << "Closing " << lastSocket << endl;
-#endif
 			close(lastSocket);
 			lastSocket = openedSocket;
 		}
+#endif
 #ifdef SOCKBUG
 		cout << "Got socket " << openedSocket << endl;
 #endif
@@ -115,7 +115,7 @@ void Socket::accept(void *(*start_routine)(void*)) {
 #endif
 #ifdef THREADING
 			pthread_t newThread;
-			int rc = pthread_create(&newThread, NULL, start_routine, (void*)&openedSocket);
+			int rc = pthread_create(&newThread, NULL, start_routine, new int(openedSocket));
 			if (rc){
          			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 				exit(-1);
