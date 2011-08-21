@@ -178,7 +178,7 @@ void Socket::sendFile(int socket, std::string file) {
 		close(filed);
 		return;
 	}
-	sendfile(filed, socket, NULL, st.st_size);
+	sendfile(socket, filed, NULL, st.st_size);
 	leng = st.st_size;
 #endif
 #ifdef DEBUG
