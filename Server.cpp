@@ -17,6 +17,7 @@
 using namespace std;
 
 static bool utility_ = false;
+static bool crux_ = false;
 
 extension extensions[] = {
 	{(char *)"j", (char *)"text/javascript"},
@@ -38,6 +39,9 @@ extension extensions[] = {
 
 void server_setUtility(bool ut) {
 	utility_ = ut;
+}
+void server_setCrux(bool crux) {
+	crux_ = crux;
 }
 
 void *server(void *socket) {
@@ -61,6 +65,7 @@ void *server(void *socket) {
 	string request(buffer);
 	request = request.substr(4);
 	size_t pos = request.find(" HTTP/1");
+	//NOTE MUST ADD IS NPOS
 	request = request.substr(0,pos);
 	
 #ifdef DEBUGFILE
@@ -68,13 +73,23 @@ void *server(void *socket) {
 #endif
 	if (strcmp(request.c_str(), "/") == 0 && !utility_)
 		request = "/index.html";
+	if (strncmp(request.c_str(), "/*", 2) == 0 && !utility_)
+		request.insert(1, string("index.html"));
 #ifdef DEBUG
 	cout << "Trying to get " << request << endl;
 #endif 
 	struct stat st;
 
+	if (crux_) {
+		size_t posp = request.find("*");
+		if (posp == string::npos)
+			goto skipcrux;
+		string requestparam = request.substr(posp);
+		request.erase(posp);
+		
+	}
+skipcrux:
 	request.insert(0,string("."));
-
 	if (stat(request.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) {
 #ifdef DEBUGFAIL
 		cout << "failed to get resource " << request << endl;

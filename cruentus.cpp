@@ -4,12 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "Socket.h"
-#ifdef Web_Server
 #include "Server.h"
-#endif
 
 using namespace std;
 
+static bool httpServer = false;
 
 int main(int argc, char **argv) {
 	
@@ -34,11 +33,15 @@ int main(int argc, char **argv) {
 			port = port.substr(7);
 			cout << "Changing port to " << port << endl;
 			aport = atoi(port.c_str());
-#ifdef Web_Server
 		} else if (strncmp(argv[i], "--utility", 9) == 0) {
 			cout << "Setting utility on" << endl;
 			server_setUtility(true);
-#endif
+		} else if (strncmp(argv[i], "--httpserver", 12) == 0) {
+			cout << "Creating http web server...." << endl;
+			httpServer = true;
+		} else if (strncmp(argv[i], "--crux", 6) == 0) {
+			cout << "Creating crux server...." << endl;
+			server_setCrux(true);
 		} else {
 			cout << "Illiegal option " << argv[i] << endl;
 			exit(-1);
@@ -50,11 +53,10 @@ int main(int argc, char **argv) {
 
 	sock->bind(aport);
 	sock->listen(BACKLOG);
-#ifdef Web_Server
-	sock->accept(server);
-#else
-	sock->accept();
-#endif
+	if (httpServer)
+		sock->accept(server);
+	else
+		sock->accept();
 	
 	delete sock;
 

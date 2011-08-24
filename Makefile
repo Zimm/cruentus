@@ -1,13 +1,9 @@
 all:cruentus
 
-cruentus:Socket.cpp cruentus.cpp
+cruentus:Socket.cpp cruentus.cpp Server.cpp
 	@mkdir -p build/
 	@echo "Building...."
 	@g++ $? -O3 -Wall -Werror -lpthread -o build/cruentus
-server:Socket.cpp cruentus.cpp Server.cpp
-	@mkdir -p build/
-	@echo "Building server..."
-	@g++ $? -O3 -Wall -Werror -lpthread -DWeb_Server=1 -o build/cruentus
 clean:
 	rm -rf build/
 start:

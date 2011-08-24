@@ -7,4 +7,5 @@ typedef struct {
 
 void *server(void *socket);
 void server_setUtility(bool ut);
+void server_setCrux(bool crux);
 #endif
