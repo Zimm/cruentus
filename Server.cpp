@@ -21,21 +21,21 @@ static bool utility_ = false;
 static bool crux_ = false;
 
 extension extensions[] = {
-	{(char *)"j", (char *)"text/javascript"},
-        {(char*)"gif", (char*)"image/gif" },
-        {(char*)"jpg", (char*)"image/jpeg"},
-        {(char*)"jpeg",(char*)"image/jpeg"},
-        {(char*)"png", (char*)"image/png" },
-        {(char*)"zip", (char*)"image/zip" },
-        {(char*)"gz",  (char*)"image/gz"  },
-        {(char*)"tar", (char*)"image/tar" },
-        {(char*)"htm", (char*)"text/html" },
-        {(char*)"html",(char*)"text/html" },
-	{(char *)"css", (char *)"text/css"},
-	{(char *)"js", (char *)"text/javascript"},
-	{(char *)"mp4", (char *)"video/mp4"},
-	{(char *)"tiff", (char *)"image/tiff"},
-	{(char *)"pdf", (char *)"application/pdf"},
+        {(char *)".j", (char *)"text/javascript"},
+        {(char*)".gif", (char*)"image/gif" },
+        {(char*)".jpg", (char*)"image/jpeg"},
+        {(char*)".jpeg",(char*)"image/jpeg"},
+        {(char*)".png", (char*)"image/png" },
+        {(char*)".zip", (char*)"image/zip" },
+        {(char*)".gz",  (char*)"image/gz"  },
+        {(char*)".tar", (char*)"image/tar" },
+        {(char*)".htm", (char*)"text/html" },
+        {(char*)".html",(char*)"text/html" },
+        {(char *)".css", (char *)"text/css"},
+        {(char *)".js", (char *)"text/javascript"},
+        {(char *)".mp4", (char *)"video/mp4"},
+        {(char *)".tiff", (char *)"image/tiff"},
+        {(char *)".pdf", (char *)"application/pdf"},
         {0,0} };
 
 static int HTMLCRUX = 0;
@@ -79,9 +79,9 @@ void *server(void *socket) {
 #ifdef DEBUGFILE
 	cout << "Requesting " << request << endl;
 #endif
-	if (strcmp(request.c_str(), "/") == 0 && !utility_)
+	if (!utility_ && strcmp(request.c_str(), "/") == 0)
 		request = "/index.html";
-	if (strncmp(request.c_str(), "/*", 2) == 0 && !utility_)
+	if (!utility_ && strncmp(request.c_str(), "/*", 2) == 0)
 		request.insert(1, string("index.html"));
 #ifdef DEBUG
 	cout << "Trying to get " << request << endl;
