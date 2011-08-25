@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <fstream>
 #include "Socket.h"
 #include "Server.h"
 
@@ -36,6 +37,13 @@ extension extensions[] = {
 	{(char *)"tiff", (char *)"image/tiff"},
 	{(char *)"pdf", (char *)"application/pdf"},
         {0,0} };
+
+static int HTMLCRUX = 0;
+
+cruxExt cruxExtenstions[]= {
+	{(char *)"html", HTMLCRUX},
+	{(char *)"hcrux", HTMLCRUX},
+	{0,0} };
 
 void server_setUtility(bool ut) {
 	utility_ = ut;
@@ -79,14 +87,14 @@ void *server(void *socket) {
 	cout << "Trying to get " << request << endl;
 #endif 
 	struct stat st;
-
+	string requestp = "";
 	if (crux_) {
 		size_t posp = request.find("*");
 		if (posp == string::npos)
 			goto skipcrux;
-		string requestparam = request.substr(posp);
+		string requestparam = request.substr(posp+1);
+		requestp = requestparam;
 		request.erase(posp);
-		
 	}
 skipcrux:
 	request.insert(0,string("."));
@@ -154,20 +162,42 @@ skipcrux:
 				header += "Content-Disposition: attachment\r\n";
 			}
 		}
-		header += "Content-Length: ";
+		if (crux_) {
+			header+= "\r\n\r\n";
+			Socket::send(sock, header);
+			ifstream fstream(request.c_str(),ifstream::in);
+			size_t place = 0;
+			char ptest[255];
+			while (!fstream.eof()) {
+				fstream.getline(ptest, 255);
+				if (!fstream || ptest[0]==0)
+					continue;
+				string sptest(ptest);
+				place = sptest.find("***");
+				if (place != string::npos) {
+					sptest.erase(place, 3);
+					sptest.insert(place, requestp);
+				}
+				Socket::send(sock, sptest);
+			}
+			fstream.close();
+		} else {
+			header += "Content-Length: ";
 		
-		ostringstream result;
-		result << st.st_size;
-		header += result.str();
+			ostringstream result;
+			result << st.st_size;
+			header += result.str();
 	
-		header += "\r\n\r\n";
+			header += "\r\n\r\n";
 #ifdef DEBUGFILE
-		cout << "Sending " << header << " for " << request << endl;
+			cout << "Sending " << header << " for " << request << endl;
 #endif
 		
-		Socket::send(sock, header);
+			Socket::send(sock, header);
 	
-		Socket::sendFile(sock, request);
+			Socket::sendFile(sock, request);
+
+		}
 	
 	}
 #ifdef DEBUGSOCK
@@ -179,4 +209,5 @@ skipcrux:
 	free(buffer);
 	return NULL;
 }
+
 

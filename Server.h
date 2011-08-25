@@ -4,6 +4,10 @@ typedef struct {
 	char *ext;
 	char *filetype;
 } extension;
+typedef struct {
+	char *ext;
+	int type;
+} cruxExt;
 
 void *server(void *socket);
 void server_setUtility(bool ut);
