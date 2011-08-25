@@ -170,7 +170,7 @@ void Socket::sendFile(int socket, std::string file) {
 	}
 	off_t leng;
 #ifdef __APPLE__
-	sendfile(filed, socket, 0, &leng, NULL, 0);
+	sendfile(socket, filed, 0, &leng, NULL, 0);
 #else
 	struct stat st;
 	if (stat(file.c_str(), &st) != 0) {
