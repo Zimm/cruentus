@@ -7,6 +7,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <sys/un.h>
 #ifndef __APPLE__
 #include <sys/sendfile.h>
 #endif
@@ -34,13 +37,19 @@ Socket::Socket() {
 
 }
 
+Socket::Socket(int fd) {
+	socket_ = new int;
+	*socket_ = fd;
+}
+
+
 Socket::Socket(int domain, int type, int protocol) {
 
 	socket_ = new int;
 
         int sock_descriptor = socket(domain, type, protocol);
         if (sock_descriptor == -1) {
-                fprintf(stderr, "Failed to open socket\n");
+                fprintf(stderr, "Failed to open custom socket\n");
                 exit(-1);
         }
 
@@ -59,6 +68,37 @@ void Socket::bind() {
 
 }
 
+void Socket::bind(char *path) {
+	
+	struct sockaddr_un address;
+	address.sun_family = AF_UNIX;
+	strcpy(address.sun_path, path);
+	unlink(address.sun_path);
+	size_t len = strlen(address.sun_path) + sizeof(address.sun_family);
+	if (::bind(*socket_,(struct sockaddr *)&address,len) == -1) {
+		fprintf(stderr, "Failed to bind unix\n");
+		return;
+	}
+#ifdef DEBUG
+        cout << "Binded to file " << address.sun_path << endl;
+#endif
+}
+
+void Socket::connect(char *path) {
+	
+	struct sockaddr_un remote;
+	remote.sun_family = AF_UNIX;
+	strcpy(remote.sun_path, path);
+	size_t len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+	if (::connect(*socket_, (struct sockaddr *)&remote, len) == -1) {
+        	fprintf(stderr, "Failed to connect\n");
+        	return;
+    	}
+#ifdef DEBUG
+	cout << "Connected to file " << remote.sun_path << endl;
+#endif
+}
+
 void Socket::bind(uint16_t port) {
 	
 	struct sockaddr_in address;
@@ -70,7 +110,7 @@ void Socket::bind(uint16_t port) {
 
 	if (::bind(*socket_,(struct sockaddr *)&address,sizeof(address)) == -1) {
 
-		fprintf(stderr, "Failed to open socket\n");
+		fprintf(stderr, "Failed to bind socket\n");
                 return;
 
 	}
@@ -86,7 +126,7 @@ void Socket::listen() {
 
 void Socket::listen(int backlog) {
 	if (::listen(*socket_, backlog) == -1) {
-                fprintf(stderr, "Failed to open socket\n");
+                fprintf(stderr, "Failed to listen socket\n");
                 exit(-1);
         }
 }
@@ -151,18 +191,19 @@ void Socket::accept() {
 	accept(tester);
 }
 
-void Socket::send(int socket, std::string message) {
+void Socket::send(std::string message) {
 #ifdef DEBUG	
 	cout<<"Sending " << message.c_str() << endl;
 #endif
-	::send(socket, message.c_str(), message.length(), 0);
+	::send(*socket_, message.c_str(), message.length(), 0);
 
 }
 
-void Socket::sendFile(int socket, std::string file) {
+void Socket::sendFile(std::string file) {
 #ifdef DEBUG
 	cout << "Sending file " << file << endl;
 #endif
+	int socket = *socket_;
 	int filed = open(file.c_str(), O_RDONLY);
 	if (filed == -1) {
 		cout << "Failed to open " << file << " for reading" << endl;

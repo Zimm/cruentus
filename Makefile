@@ -1,11 +1,13 @@
 all:cruentus
 
-cruentus:Socket.cpp cruentus.cpp Server.cpp
+libcruentus:Socket.cpp
 	@mkdir -p build/
-	@echo "Building...."
-	@g++ $? -O3 -Wall -Werror -lpthread -o build/cruentus
+	@echo "Building libcruentus...."
+	@g++ -c Socket.cpp -O3 -Wall -Werror -lpthread -fPIC -o build/libcruentus.a
+
+cruentus:libcruentus
+	@mkdir -p build/
+	@echo "Building cruentus...."
+	@g++ Server.cpp cruentus.cpp -O3 -Wall -Werror -lpthread -L./build/ -lcruentus -o build/cruentus
 clean:
 	rm -rf build/
-start:
-	@echo "Starting server..."
-	@./build/cruentus
