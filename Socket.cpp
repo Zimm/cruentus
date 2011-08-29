@@ -189,7 +189,7 @@ extern "C" void *tester(void *socket) {
 		
 		cout << buffer << endl;
 		if (echo_server)
-			send(sock, buffer, strlen(buffer), 0);
+			send(sock, buffer, bufsize, 0);
 	}
 	return NULL;
 }
