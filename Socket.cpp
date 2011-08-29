@@ -17,6 +17,12 @@
 
 using namespace std;
 
+static bool echo_server = false;
+
+void server_setEcho(bool e) {
+	echo_server = e;
+}
+
 Socket::Socket() {
 	
 	socket_ = new int;
@@ -182,6 +188,8 @@ extern "C" void *tester(void *socket) {
 		recv(sock,buffer,bufsize,0);
 		
 		cout << buffer << endl;
+		if (echo_server)
+			send(sock, buffer, strlen(buffer), 0);
 	}
 	return NULL;
 }

@@ -13,6 +13,7 @@ static bool httpServer = false;
 int main(int argc, char **argv) {
 	
 	uint16_t aport = 7331;
+	string *conf_file = new string("./cruentus.conf");
 
 	for (int i = 1; i < argc; i++) {
 	
@@ -48,6 +49,23 @@ int main(int argc, char **argv) {
 				cout << "Forking into "<< forker << " process" << endl;
 				exit(0);
 			}
+		} else if (strncmp(argv[i], "--conf=", 7) == 0) {
+			delete conf_file;
+			string conf(argv[i]);
+			conf = conf.substr(7);
+			if (strncmp(conf.c_str(), "~", 1) == 0) {
+                                conf = conf.substr(1);
+                                char *home = getenv("HOME");
+                                conf = string(home).append(conf);
+                        }
+			conf_file = new string(string(argv[i]).substr(7));
+			cout << "Changed conf file to " << conf_file;
+		} else if (strncmp(argv[i], "--log", 5) == 0) {
+			server_setLogging(true);
+			cout << "Server is now being logged" << endl;
+		} else if (strncmp(argv[i], "--echo", 6) == 0) {
+			server_setEcho(true);
+			cout << "Created echo server" << endl;
 		} else {
 			cout << "Illiegal option " << argv[i] << endl;
 			exit(-1);
@@ -55,6 +73,12 @@ int main(int argc, char **argv) {
 		
 	}
 	
+	if (httpServer) {
+		server_readConf(conf_file->c_str());
+	}
+	
+	delete conf_file;
+
 	Socket *sock = new Socket();
 
 	sock->bind(aport);

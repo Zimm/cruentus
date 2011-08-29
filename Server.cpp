@@ -7,11 +7,11 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <time.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <fstream>
+#include <time.h>
 #include "Socket.h"
 #include "Server.h"
 
@@ -19,6 +19,7 @@ using namespace std;
 
 static bool utility_ = false;
 static bool crux_ = false;
+static bool logging_ = false;
 
 extension extensions[] = {
         {(char *)".j", (char *)"text/javascript"},
@@ -47,12 +48,48 @@ cruxExt cruxExtenstions[]= {
 	{(char *)".crux", SOCKCRUX},
 	{0,0} };
 
+
+static vector<serverPath> *servers = new vector<serverPath>();
+
 void server_setUtility(bool ut) {
 	utility_ = ut;
 }
 void server_setCrux(bool crux) {
 	crux_ = crux;
 }
+
+void server_setLogging(bool log) {
+	logging_ = log;
+}
+
+void server_readConf(const char *path) {
+	
+	ifstream in(path);
+	char *data = new char[1024];
+	
+	while (in) {
+		in.getline(data, 1024);
+		if (!in || data[0] == 0)
+			continue;
+		string dd(data);
+		size_t first = dd.find("<*server*>");
+		size_t second = dd.find("<*server*>", first+11/*lengthof <*server*> ++*/);
+		string stuff = dd.substr(first+10, (second - (first+10)));
+		size_t sppl = stuff.find(" ");
+		string domain = stuff.substr(0, sppl);
+		string path = stuff.substr(sppl+1);
+		serverPath server;
+		server.domain = domain;	
+		server.path = path;
+		servers->push_back(server);
+#ifdef DEBUG
+		cout << "Found server " << server.domain << " with path " << server.path << endl;
+#endif	
+	}
+	delete data;
+	in.close();
+}
+
 
 void replace(string &str, const string &find_what, const string &replace_with)
 {
@@ -74,17 +111,60 @@ void *server(void *socket) {
 	int bufsize=1024;
 	char *buffer = (char *)calloc(1,bufsize);
 	recv(sock,buffer,bufsize,0);
+	if (logging_) {
+		time_t rtime;
+		time(&rtime);
+		string ts = string(ctime(&rtime));
+		cout << "[" << ts.substr(0,ts.length()-1) << "] Request:" << endl << buffer << endl << endl;
+	}
 #ifdef DEBUG
 	cout << "Request:" << endl << buffer << endl<<"Done"<<endl;
 #endif
 	//get the url they want.....
 	if (strncmp(buffer, "GET ", 4) && strncmp(buffer,"get ",4)) {
 		asock_->send(string("Sorry only GET is allowed atm"));
+		close(sock);
+		delete asock_;
 		free(buffer);
 		return NULL;
 	}		
 	
 	string request(buffer);
+
+	if (servers->size() > 0) {
+		string aserver(request);
+		size_t hostp = aserver.find("Host:");
+		size_t newlp = aserver.find("\n", hostp);
+		if (hostp == string::npos || newlp == string::npos) 
+			goto skipWho;
+		aserver = aserver.substr(hostp, newlp-hostp);
+		aserver = aserver.substr(5);
+		if (aserver[0] == ' ')
+			aserver = aserver.substr(1);
+		if (aserver.find("aboutcrux") == 0) {
+			free(buffer);
+			asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Cruentus:<br/>The bloodiest web server out there<br/>Version 0.1a</body></html>"));
+			close(sock);
+			delete asock_;
+			return NULL;
+		}	
+		size_t matches = 0;
+		string path("./");
+		for (unsigned int i = 0; i < servers->size(); ++i) {
+			size_t matchest = aserver.find((*servers)[i].domain);
+			if (matchest == string::npos && (*servers)[i].domain.compare("*") != 0)
+				continue;
+			size_t matchl = (*servers)[i].domain.length();
+			if (matchl > matches) {
+				path = (*servers)[i].path;
+				matches = matchl;
+			}
+		}
+		if (chdir(path.c_str()) != 0) {
+			cout << "Failed to chdir(" << path << ")" << endl;
+		}
+	}
+skipWho:
 	request = request.substr(4);
 	size_t pos = request.find(" HTTP/1");
 	//NOTE MUST ADD IS NPOS
@@ -134,7 +214,7 @@ skipcrux:
 		cout << "failed to get resource " << request << endl;
 #endif
 		if (!utility_) {
-			asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Goodbye World</body></html>"));
+			asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>NotFound<br/>Goodbye World<br/></body></html>"));
 		} else {
 		
 			DIR *dp;
@@ -145,8 +225,14 @@ skipcrux:
 				asock_->send(string("Content-Type: text/html; charset=UTF-8\r\n\r\n"));
 				asock_->send(string("<html><body>"));
 				while ((ep = readdir (dp)) != NULL) {
+					asock_->send(string("<a href=./"));
 					asock_->send(string(ep->d_name));
-					asock_->send(string("<br/>"));
+					if (ep->d_type == DT_DIR) {
+						asock_->send(string("/"));
+					}
+					asock_->send(string(">"));
+					asock_->send(string(ep->d_name));
+					asock_->send(string("</a><br/>"));
 				}	
 				asock_->send(string("</body></html>"));
 				closedir (dp);
