@@ -6,9 +6,16 @@ typedef struct {
 	char *ext;
 	char *filetype;
 } extension;
+
+typedef enum {
+	kCruxUnknown = -1,
+	kCruxText = 0,
+	kCruxSock = 1
+} crux_t;
+
 typedef struct {
 	char *ext;
-	int type;
+	crux_t type;
 } cruxExt;
 
 typedef struct {
