@@ -109,14 +109,8 @@ void *server(void *socket) {
 	cout << pthread_self() << ": Got socket " << sock << endl;
 #endif
 	int bufsize=1024;
-	size_t totalSize = 0;
-	int aret;
-	char *buffer = (char *)calloc(1,1);
-	do {
-		totalSize += bufsize;
-		buffer = (char *)realloc(buffer,totalSize);
-		aret = recv(sock,buffer,bufsize,0);
-	} while (aret > 0);
+	char *buffer = (char *)calloc(1,bufsize);
+	recv(sock,buffer,bufsize,0);
 
 	if (logging_) {
 		time_t rtime;
