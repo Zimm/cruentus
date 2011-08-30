@@ -109,7 +109,7 @@ void *server(void *socket) {
 	cout << pthread_self() << ": Got socket " << sock << endl;
 #endif
 	int bufsize=1024;
-	size_t totalSize;
+	size_t totalSize = 0;
 	int aret;
 	char *buffer = (char *)calloc(1,1);
 	do {
