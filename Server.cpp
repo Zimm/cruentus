@@ -7,11 +7,11 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <time.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <fstream>
+#include <time.h>
 #include "Socket.h"
 #include "Server.h"
 
@@ -19,6 +19,7 @@ using namespace std;
 
 static bool utility_ = false;
 static bool crux_ = false;
+static bool logging_ = false;
 
 extension extensions[] = {
         {(char *)".j", (char *)"text/javascript"},
@@ -31,6 +32,7 @@ extension extensions[] = {
         {(char*)".tar", (char*)"image/tar" },
         {(char*)".htm", (char*)"text/html" },
         {(char*)".html",(char*)"text/html" },
+	{(char *)".hcrux",(char *)"text/html" },
         {(char *)".css", (char *)"text/css"},
         {(char *)".js", (char *)"text/javascript"},
         {(char *)".mp4", (char *)"video/mp4"},
@@ -38,12 +40,16 @@ extension extensions[] = {
         {(char *)".pdf", (char *)"application/pdf"},
         {0,0} };
 
-static int HTMLCRUX = 0;
+
 
 cruxExt cruxExtenstions[]= {
-	{(char *)"html", HTMLCRUX},
-	{(char *)"hcrux", HTMLCRUX},
-	{0,0} };
+	{(char *)".hcrux", kCruxText},
+	{(char *)".crux", kCruxSock},
+	{(char *)".php", kCruxSock},
+	{0,kCruxUnknown}};
+
+
+static vector<serverPath> *servers = new vector<serverPath>();
 
 void server_setUtility(bool ut) {
 	utility_ = ut;
@@ -52,82 +58,229 @@ void server_setCrux(bool crux) {
 	crux_ = crux;
 }
 
+void server_setLogging(bool log) {
+	logging_ = log;
+}
+
+void server_readConf(const char *path) {
+	
+	ifstream in(path);
+	char *data = new char[1024];
+	
+	while (in) {
+		in.getline(data, 1024);
+		if (!in || data[0] == 0)
+			continue;
+		string dd(data);
+		size_t first = dd.find("<*server*>");
+		size_t second = dd.find("<*server*>", first+11/*lengthof <*server*> ++*/);
+		string stuff = dd.substr(first+10, (second - (first+10)));
+		size_t sppl = stuff.find(" ");
+		string domain = stuff.substr(0, sppl);
+		string path = stuff.substr(sppl+1);
+		serverPath server;
+		server.domain = domain;	
+		server.path = path;
+		servers->push_back(server);
+#ifdef DEBUG
+		cout << "Found server " << server.domain << " with path " << server.path << endl;
+#endif	
+	}
+	delete data;
+	in.close();
+}
+
+
+void replace(string &str, const string &find_what, const string &replace_with)
+{
+	string::size_type pos=0;
+	while((pos=str.find(find_what, pos))!=string::npos)
+	{
+		str.erase(pos, find_what.length());
+		str.insert(pos, replace_with);
+		pos+=replace_with.length();
+	}
+}
+
 void *server(void *socket) {
 	int sock = *((int*)socket);
+	Socket *asock_= new Socket(sock);
 #ifdef DEBUGSOCK
 	cout << pthread_self() << ": Got socket " << sock << endl;
 #endif
 	int bufsize=1024;
 	char *buffer = (char *)calloc(1,bufsize);
 	recv(sock,buffer,bufsize,0);
+	if (logging_) {
+		time_t rtime;
+		time(&rtime);
+		string ts = string(ctime(&rtime));
+		cout << "[" << ts.substr(0,ts.length()-1) << "] Request:" << endl << buffer << endl << endl;
+	}
 #ifdef DEBUG
 	cout << "Request:" << endl << buffer << endl<<"Done"<<endl;
 #endif
 	//get the url they want.....
-	if (strncmp(buffer, "GET ", 4) && strncmp(buffer,"get ",4)) {
-		Socket::send(sock, string("Sorry only GET is allowed atm"));
+	if (strncmp(buffer, "GET ", 4) && strncmp(buffer,"get ",4) && strncmp(buffer, "POST ", 5) && strncmp(buffer, "post ", 5)) {
+		asock_->send(string("Unknown protocol D:"));
+		close(sock);
+		delete asock_;
 		free(buffer);
 		return NULL;
 	}		
 	
 	string request(buffer);
+	
 	request = request.substr(4);
-	size_t pos = request.find(" HTTP/1");
-	//NOTE MUST ADD IS NPOS
-	request = request.substr(0,pos);
+        if (request[0] == ' ')
+                request = request.substr(1);
+        size_t pos = request.find(" HTTP/1");
+        //NOTE MUST ADD IF NPOS
+        request = request.substr(0,pos);
+
+	if (servers->size() > 0) {
+		string aserver(buffer);
+		size_t hostp = aserver.find("Host:");
+		size_t newlp = aserver.find("\r\n", hostp);
+		if (hostp == string::npos || newlp == string::npos) 
+			goto skipWho;
+		aserver = aserver.substr(hostp, newlp-hostp);
+		aserver = aserver.substr(5);
+		if (aserver[0] == ' ')
+			aserver = aserver.substr(1);
+		
+		aserver += request;
+		if (aserver.find("aboutcrux") == 0) {
+			free(buffer);
+			asock_->send(string("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Cruentus:<br/>The bloodiest web server out there<br/>Version 0.1a</body></html>"));
+			close(sock);
+			delete asock_;
+			return NULL;
+		}	
+		size_t matches = 0;
+		string path("./");
+		string removePath("");
+		for (unsigned int i = 0; i < servers->size(); ++i) {
+			string currentDomain((*servers)[i].domain);
+			size_t matchest = aserver.find(currentDomain);
+			if (matchest == string::npos && currentDomain.compare("*") != 0)
+				continue;
+		//	size_t matchl = currentDomain.length();
+		
+			string apath("");
+			size_t matchl = 0;
+			bool startedPath =false;
+			for (unsigned int ii =0; ii < currentDomain.length();++ii) {
+				if (currentDomain[ii] == aserver[matchest+ii]) {
+					matchl++;
+					if (startedPath) {
+						apath += currentDomain[ii];
+					} else if (currentDomain[ii] == '/') {
+						startedPath = true;
+						apath += currentDomain[ii];
+					}
+				}
+			}
+		
+			if (matchl > matches) {
+				path = (*servers)[i].path;
+				matches = matchl;
+				removePath = apath;
+			}
+		}
+		if (chdir(path.c_str()) != 0) {
+			cout << "Failed to chdir(" << path << ")" << endl;
+		}
+		
+		if (removePath.length() > 1) {
+			size_t where = request.find(removePath);
+			if (where != string::npos) {
+				request.erase(where, removePath[removePath.length()-1]=='/'? removePath.length()-1:removePath.length());
+			}
+		}
+		
+	}
+skipWho:
 	
 #ifdef DEBUGFILE
 	cout << "Requesting " << request << endl;
 #endif
 	if (!utility_ && strcmp(request.c_str(), "/") == 0)
-		request = "/index.html";
-	if (!utility_ && strncmp(request.c_str(), "/*", 2) == 0)
-		request.insert(1, string("index.html"));
+		request = !crux_ ? "/index.html":"/index.hcrux";
+	else if (!utility_ && strncmp(request.c_str(), "/?", 2) == 0)
+		request.insert(1, string(!crux_?"index.html":"index.hcrux"));
 #ifdef DEBUG
 	cout << "Trying to get " << request << endl;
 #endif 
 	struct stat st;
 	string requestp = "";
 	if (crux_) {
-		size_t posp = request.find("*");
+		size_t posp = request.find("?");
 		if (posp == string::npos)
 			goto skipcrux;
 		string requestparam = request.substr(posp+1);
+		size_t space = 0;
+		while (space != string::npos) {
+			space = requestparam.find("%20");
+			if (space != string::npos)
+				requestparam.replace(space, 3, " ");
+		}
 		requestp = requestparam;
 		request.erase(posp);
 	}
 skipcrux:
 	request.insert(0,string("."));
-	if (stat(request.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) {
+
+	stat(request.c_str(), &st);
+
+	if (!utility_ && S_ISDIR(st.st_mode) && !(crux_ && request.find(".crux")!=string::npos)) {
+		if (request[request.length()-1] == '/')
+			request += !crux_?"index.html":"index.hcrux";
+		else
+			request += !crux_?"/index.html":"index.hcrux";
+	}
+
+	if (stat(request.c_str(), &st) != 0) {
+		if (request.substr(request.length()-11).compare(string("index.hcrux")) == 0) {
+			request = request.substr(0,request.length()-4).append(string("tml"));
+		}
+	}
+
+	
+	if ((stat(request.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) && !(crux_ && request.find(".crux")!=string::npos)) {
 #ifdef DEBUGFAIL
 		cout << "failed to get resource " << request << endl;
 #endif
 		if (!utility_) {
-			Socket::send(sock, string("HTTP/1.1 404 Not Found\r\n"));
-			Socket::send(sock, string("Content-Type: text/html; charset=UTF-8\r\n\r\n"));
-			Socket::send(sock, string("<html><body>Goodbye World</body></html>"));
+			asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>NotFound<br/>Goodbye World<br/></body></html>"));
 		} else {
 		
 			DIR *dp;
 			struct dirent *ep;     
 			dp = opendir (request.c_str());
 			if (dp != NULL) {
-				Socket::send(sock,string("HTTP/1.1 200 OK\r\n"));
-				Socket::send(sock, string("Content-Type: text/html; charset=UTF-8\r\n\r\n"));
-				Socket::send(sock,string("<html><body>"));
+				asock_->send(string("HTTP/1.1 200 OK\r\n"));
+				asock_->send(string("Content-Type: text/html; charset=UTF-8\r\n\r\n"));
+				asock_->send(string("<html><body>"));
 				while ((ep = readdir (dp)) != NULL) {
-					Socket::send(sock,string(ep->d_name));
-					Socket::send(sock,string("<br/>"));
+					asock_->send(string("<a href=./"));
+					asock_->send(string(ep->d_name));
+					if (ep->d_type == DT_DIR) {
+						asock_->send(string("/"));
+					}
+					asock_->send(string(">"));
+					asock_->send(string(ep->d_name));
+					asock_->send(string("</a><br/>"));
 				}	
-				Socket::send(sock, string("</body></html>"));
+				asock_->send(string("</body></html>"));
 				closedir (dp);
 			} else {
 #ifdef DEBUGFAIL
 				cout << "Failed to get resource dir" << endl;
 #endif
-				Socket::send(sock,string("HTTP/1.1 404 Not Found\r\n"));
-				Socket::send(sock,string("Content-Type: text/html; charset=UTF-8\r\n\r\n"));
-				Socket::send(sock, string("<html><body>Goodbye World</body></html>"));
+				asock_->send(string("HTTP/1.1 404 Not Found\r\n"));
+				asock_->send(string("Content-Type: text/html; charset=UTF-8\r\n\r\n"));
+				asock_->send(string("<html><body>Goodbye World</body></html>"));
 			}	
 		}
 	
@@ -141,13 +294,15 @@ skipcrux:
 				break;
 			}
 		}
-			
+
 		string header("HTTP/1.1 200 OK\r\n");
 		
 		time_t rawtime;
 		time(&rawtime);
 		header += "Date: ";
 		header += ctime(&rawtime);
+		
+		header += "Server: cruentus/0.1a\r\n";
 
 		if (fstr == 0) {
 #ifdef DEBUG
@@ -162,40 +317,104 @@ skipcrux:
 				header += "Content-Disposition: attachment\r\n";
 			}
 		}
+		size_t currentCrux = -1;
 		if (crux_) {
-			header+= "\r\n\r\n";
-			Socket::send(sock, header);
-			ifstream fstream(request.c_str(),ifstream::in);
-			size_t place = 0;
-			char ptest[255];
-			while (!fstream.eof()) {
-				fstream.getline(ptest, 255);
-				if (!fstream || ptest[0]==0)
-					continue;
-				string sptest(ptest);
-				place = sptest.find("***");
-				if (place != string::npos) {
-					sptest.erase(place, 3);
-					sptest.insert(place, requestp);
-				}
-				Socket::send(sock, sptest);
+			crux_t cruxType = kCruxUnknown;
+			for (int i=0;cruxExtenstions[i].ext != 0;i++) {
+				size_t len = strlen(cruxExtenstions[i].ext);
+				if (!strncmp(request.substr(leng-len).c_str(), cruxExtenstions[i].ext, len)) {
+                                	cruxType =cruxExtenstions[i].type;
+                                	break;
+                        	}
 			}
-			fstream.close();
+			switch (cruxType) {
+				case kCruxSock:{
+					Socket *unSock = new Socket(AF_UNIX, SOCK_STREAM, 0);
+					string tmpr(request);
+					if (tmpr[tmpr.length()-1]=='/')
+						tmpr+="sock";
+					else
+						tmpr+="/sock";
+					unSock->connect((char *)tmpr.c_str());
+					unSock->send(requestp);
+					int bs = 1024;
+					char *abs = (char *)calloc(1,bs);
+					int rt = recv(*(unSock->socket_),abs,bs,0);
+					if (rt <= 0) {
+						asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Goodbye World</body></html>"));
+					} else {
+						asock_->send(string(abs));
+					}
+					delete unSock;
+					free(abs);
+					break;
+				}
+				case kCruxText:{
+					header+= "\r\n\r\n";
+					asock_->send(header);
+					ifstream fstream(request.c_str(),ifstream::in);
+					size_t place = 0;
+					char ptest[255];
+					while (!fstream.eof()) {
+						fstream.getline(ptest, 255);
+						if (!fstream || ptest[0]==0)
+							continue;
+						string sptest(ptest);
+						size_t aplace = 0;
+						while (aplace != string::npos) {
+							place = aplace = sptest.find("<*", aplace);
+							if (place != string::npos) {
+								size_t place2 = sptest.find("*>",aplace);
+								if (place2 != string::npos) {
+									int dp = (place2) - (place + 2);
+									size_t crpl = requestp.find("?", ++currentCrux);
+									string arequestp("");
+									if (crpl != string::npos) {
+										arequestp = requestp.substr(currentCrux, crpl-currentCrux);
+										currentCrux = crpl;
+									} else if (requestp.find("?", currentCrux+1) == string::npos) {
+										arequestp = requestp.substr(currentCrux);
+										currentCrux = requestp.length()-1;
+									}
+									if (dp > 0) {
+										string def = sptest.substr(place+2,dp);
+#ifdef DEBUG
+										cout << "Default is " <<def << endl;
+#endif	
+										sptest.erase(place, (place2+2)-place);
+										sptest.insert(place, (arequestp.length()>0 ? arequestp : def));
+									} else {
+										sptest.erase(place, 3);
+										sptest.insert(place, arequestp);
+									}
+								}
+							}
+						}
+						asock_->send(sptest);
+					}
+					fstream.close();
+					break;
+				}
+				default:
+					goto branchRegular;
+					break;
+			};
 		} else {
+branchRegular:
 			header += "Content-Length: ";
 		
 			ostringstream result;
 			result << st.st_size;
 			header += result.str();
-	
+			
 			header += "\r\n\r\n";
 #ifdef DEBUGFILE
 			cout << "Sending " << header << " for " << request << endl;
 #endif
 		
-			Socket::send(sock, header);
+			asock_->send(header);
 	
-			Socket::sendFile(sock, request);
+			asock_->sendFile(request);
 
 		}
 	
@@ -206,6 +425,7 @@ skipcrux:
 #ifndef TESTSOCK
 	close(sock);
 #endif
+	delete asock_;
 	free(buffer);
 	return NULL;
 }
