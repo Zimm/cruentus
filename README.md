@@ -23,7 +23,7 @@ libcruentus is the main library I use for anything having to do with the server.
 Cruxes are plugins for cruentus. There are two types so far:
 
 1. HTML cruxes
-An HTML crux supports dynamically created web pages. Based on what is put in the address bar similar to how php works (http://smth.asdf/asdf.php?asdf) will show up in the page. An example page is in the repo, index.html. Basically you add <*smth*> to the html file, the default value is smth but if you add ?asdf to the end of the url then smth will be replaced with asdf.
+An HTML crux supports dynamically created web pages. Based on what is put in the address bar similar to how php works (http://smth.asdf/asdf.php?asdf) will show up in the page. An example page is in the repo, index.html. Basically you add <**smth\**> to the html file, the default value is smth but if you add ?asdf to the end of the url then smth will be replaced with asdf.
 EX: http://asdf.asdf.asdf.hcrux?poop
 EX2: http://asdf.asdf.asdf/?poop it automatically looks for index files so you can just add the ?blah to the end after the /!
 2. Socket cruxes
