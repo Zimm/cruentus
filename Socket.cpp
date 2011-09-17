@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <sys/un.h>
+#include <errno.h>
+#include <netdb.h>
 #ifndef __APPLE__
 #include <sys/sendfile.h>
 #endif
@@ -30,17 +32,17 @@ Socket::Socket() {
 	int sock_descriptor = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock_descriptor == -1) {
 		fprintf(stderr, "Failed to open socket\n");
-		exit(-1);
+		errno = 41;
 	}
 
 	int on = 1;
 	if (setsockopt(sock_descriptor, SOL_SOCKET, SO_REUSEADDR, (const char*) &on, sizeof(on)) == -1) {
 		fprintf(stderr, "Failed to set sock options\n");
-		exit(-1);
+		errno = 42;
 	}
 
 	*socket_ = sock_descriptor;
-
+	errno = 0;
 }
 
 Socket::Socket(int fd) {
@@ -56,11 +58,11 @@ Socket::Socket(int domain, int type, int protocol) {
         int sock_descriptor = socket(domain, type, protocol);
         if (sock_descriptor == -1) {
                 fprintf(stderr, "Failed to open custom socket\n");
-                exit(-1);
+                errno = 43;
         }
 
         *socket_ = sock_descriptor;
-
+	errno = 0;
 }
 
 Socket::~Socket() {
@@ -68,13 +70,13 @@ Socket::~Socket() {
 	delete socket_;
 }
 
-void Socket::bind() {
+bool Socket::bind() {
 	
-	bind(7331);
+	return bind(7331);
 
 }
 
-void Socket::bind(char *path) {
+bool Socket::bind(char *path) {
 	
 	struct sockaddr_un address;
 	address.sun_family = AF_UNIX;
@@ -83,29 +85,54 @@ void Socket::bind(char *path) {
 	size_t len = strlen(address.sun_path) + sizeof(address.sun_family);
 	if (::bind(*socket_,(struct sockaddr *)&address,len) == -1) {
 		fprintf(stderr, "Failed to bind unix\n");
-		return;
+		return false;
 	}
 #ifdef DEBUG
         cout << "Binded to file " << address.sun_path << endl;
 #endif
+	return true;
 }
 
-void Socket::connect(char *path) {
+bool Socket::connect(char *path) {
 	
 	struct sockaddr_un remote;
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	size_t len = strlen(remote.sun_path) + sizeof(remote.sun_family);
 	if (::connect(*socket_, (struct sockaddr *)&remote, len) == -1) {
-        	fprintf(stderr, "Failed to connect\n");
-        	return;
+        	fprintf(stderr, "Failed to connect %i\n", errno);
+        	return false;
     	}
 #ifdef DEBUG
 	cout << "Connected to file " << remote.sun_path << endl;
 #endif
+	return true;
 }
 
-void Socket::bind(uint16_t port) {
+bool Socket::connect(char *url, uint16_t port) {
+	
+	struct sockaddr_in serv_addr;
+	struct hostent *server;
+	server = gethostbyname(url);
+	if (server == NULL) {
+		fprintf(stderr, "Failed to get host %i\n", errno);
+		return false;
+	}
+	serv_addr.sin_family = AF_INET;
+	bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+	serv_addr.sin_port = htons(port);
+	if (::connect(*socket_,(const struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
+		fprintf(stderr, "Failed to connect %i\n", errno);
+		return false;
+	}
+#ifdef DEBUG
+	cout << "Connected to " << url << ":" << port << endl;
+#endif
+	return true;
+}
+
+
+bool Socket::bind(uint16_t port) {
 	
 	struct sockaddr_in address;
 
@@ -117,24 +144,26 @@ void Socket::bind(uint16_t port) {
 	if (::bind(*socket_,(struct sockaddr *)&address,sizeof(address)) == -1) {
 
 		fprintf(stderr, "Failed to bind socket\n");
-                return;
+                return false;
 
 	}
 #ifdef DEBUG
 	cout << "Binded to port " << ntohs(address.sin_port) << endl;
 #endif
+	return true;
 }
 
 
-void Socket::listen() {
-	listen(1);
+bool Socket::listen() {
+	return listen(1);
 }
 
-void Socket::listen(int backlog) {
+bool Socket::listen(int backlog) {
 	if (::listen(*socket_, backlog) == -1) {
                 fprintf(stderr, "Failed to listen socket\n");
-                exit(-1);
-        }
+        	return false;
+	}
+	return true;
 }
 
 #ifdef TESTSOCK
@@ -148,7 +177,6 @@ void Socket::accept(void *(*start_routine)(void*)) {
 		int openedSocket = ::accept(*socket_, (struct sockaddr *)&inAddress, (socklen_t *)&socklen);
 		if (openedSocket < 0) {
 			fprintf(stderr, "Failed to accept incoming socket\n");
-			exit(-1);
 		}
 #ifdef TESTSOCK
 		if (openedSocket != lastSocket) {
@@ -207,7 +235,7 @@ void Socket::send(std::string message) {
 
 }
 
-void Socket::sendFile(std::string file) {
+bool Socket::sendFile(std::string file) {
 #ifdef DEBUG
 	cout << "Sending file " << file << endl;
 #endif
@@ -215,7 +243,7 @@ void Socket::sendFile(std::string file) {
 	int filed = open(file.c_str(), O_RDONLY);
 	if (filed == -1) {
 		cout << "Failed to open " << file << " for reading" << endl;
-		return;
+		return false;
 	}
 	off_t leng;
 #ifdef __APPLE__
@@ -225,7 +253,7 @@ void Socket::sendFile(std::string file) {
 	if (stat(file.c_str(), &st) != 0) {
 		cout << "No file found at " << file << endl;
 		close(filed);
-		return;
+		return false;
 	}
 	sendfile(socket, filed, NULL, st.st_size);
 	leng = st.st_size;
@@ -234,5 +262,6 @@ void Socket::sendFile(std::string file) {
 	cout << "Sent " << leng << " bytes" << endl;
 #endif
 	close(filed);
+	return true;
 }
 

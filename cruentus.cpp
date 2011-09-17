@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include "Socket.h"
 #include "Server.h"
 
@@ -10,8 +11,11 @@ using namespace std;
 
 static bool httpServer = false;
 
+void pipesignal(int sig) {
+        cout << "Tried to call to a closed pipe" << endl;
+}
+
 int main(int argc, char **argv) {
-	
 	uint16_t aport = 7331;
 	string *conf_file = new string("./cruentus.conf");
 
@@ -72,7 +76,7 @@ int main(int argc, char **argv) {
 		}
 		
 	}
-	
+	signal(SIGPIPE, pipesignal);
 	if (httpServer) {
 		server_readConf(conf_file->c_str());
 	}

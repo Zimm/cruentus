@@ -16,16 +16,17 @@ class Socket {
 		Socket();
 		Socket(int fd);
                 ~Socket();
-                void bind();
-                void bind(uint16_t port);
-		void bind(char *path);
-		void connect(char *path);
-                void listen();
-                void listen(int backlog);
+                bool bind();
+                bool bind(uint16_t port);
+		bool bind(char *path);
+		bool connect(char *path);
+                bool connect(char *url, uint16_t port);
+		bool listen();
+                bool listen(int backlog);
                 void accept(void *(*start_routine)(void*));
                 void accept();
 		void send(std::string message);
-		void sendFile(std::string file);
+		bool sendFile(std::string file);
 };
 
 void server_setEcho(bool e);

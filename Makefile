@@ -1,13 +1,24 @@
-all:cruentus
+all:builddir libcruentus cruentus
 
-libcruentus:Socket.cpp
+builddir:
 	@mkdir -p build/
+
+libcruentus: Socket.o
 	@echo "Building libcruentus...."
-	@g++ -c Socket.cpp -O3 -Wall -Werror -lpthread -fPIC -o build/libcruentus.a
+	@g++ build/Socket.o -lpthread -shared -o build/libcruentus.a
 
-cruentus:libcruentus
-	@mkdir -p build/
+Socket.o: Socket.cpp
+	g++ -c -Wall -Werror -O3 -fPIC -o build/Socket.o Socket.cpp
+
+cruentus: cruentus.o Server.o
 	@echo "Building cruentus...."
-	@g++ Server.cpp cruentus.cpp -O3 -Wall -Werror -lpthread -L./build/ -lcruentus -o build/cruentus
+	@g++ build/Server.o build/cruentus.o -lpthread -lcruentus -o build/cruentus
+
+cruentus.o: cruentus.cpp
+	g++ -c -O3 -Wall -Werror -o build/cruentus.o cruentus.cpp
+
+Server.o: Server.cpp
+	g++ -c -O3 -Wall -Werror -o build/Server.o Server.cpp
+
 clean:
 	rm -rf build/

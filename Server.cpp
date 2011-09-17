@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/types.h>
@@ -72,6 +73,8 @@ void server_readConf(const char *path) {
 		if (!in || data[0] == 0)
 			continue;
 		string dd(data);
+		if (dd[0] == '#')
+			continue;
 		size_t first = dd.find("<*server*>");
 		size_t second = dd.find("<*server*>", first+11/*lengthof <*server*> ++*/);
 		string stuff = dd.substr(first+10, (second - (first+10)));
@@ -109,8 +112,16 @@ void *server(void *socket) {
 	cout << pthread_self() << ": Got socket " << sock << endl;
 #endif
 	int bufsize=1024;
-	char *buffer = (char *)calloc(1,bufsize);
-	recv(sock,buffer,bufsize,0);
+	string buffer("");
+	int leggs = 0;
+	do {
+		char *abuff = (char *)calloc(1,bufsize);
+		leggs = recv(sock,abuff,bufsize,0);
+		if (strlen(abuff) == 0)
+			continue;
+		buffer += abuff;
+		free(abuff);
+	} while (leggs > 0 && buffer.find("\r\n\r\n") == string::npos);
 
 	if (logging_) {
 		time_t rtime;
@@ -122,11 +133,10 @@ void *server(void *socket) {
 	cout << "Request:" << endl << buffer << endl<<"Done"<<endl;
 #endif
 	//get the url they want.....
-	if (strncmp(buffer, "GET ", 4) && strncmp(buffer,"get ",4) && strncmp(buffer, "POST ", 5) && strncmp(buffer, "post ", 5)) {
+	if (strncmp(buffer.c_str(), "GET ", 4) && strncmp(buffer.c_str(),"get ",4) && strncmp(buffer.c_str(), "POST ", 5) && strncmp(buffer.c_str(), "post ", 5)) {
 		asock_->send(string("Unknown protocol D:"));
 		close(sock);
 		delete asock_;
-		free(buffer);
 		return NULL;
 	}		
 	
@@ -152,7 +162,6 @@ void *server(void *socket) {
 		
 		aserver += request;
 		if (aserver.find("aboutcrux") == 0) {
-			free(buffer);
 			asock_->send(string("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Cruentus:<br/>The bloodiest web server out there<br/>Version 0.1a</body></html>"));
 			close(sock);
 			delete asock_;
@@ -191,7 +200,7 @@ void *server(void *socket) {
 		}
 		if (chdir(path.c_str()) != 0) {
 			cout << "Failed to chdir(" << path << ")" << endl;
-		}
+		} 
 		
 		if (removePath.length() > 1) {
 			size_t where = request.find(removePath);
@@ -234,21 +243,24 @@ skipcrux:
 
 	stat(request.c_str(), &st);
 
-	if (!utility_ && S_ISDIR(st.st_mode) && !(crux_ && request.find(".crux")!=string::npos)) {
+
+	if (!utility_ && S_ISDIR(st.st_mode) && !(crux_ && request.find(".crux")!=string::npos) && !(crux_ && request.find(".php")!=string::npos)) {
 		if (request[request.length()-1] == '/')
 			request += !crux_?"index.html":"index.hcrux";
 		else
-			request += !crux_?"/index.html":"index.hcrux";
+			request += !crux_?"/index.html":"/index.hcrux";
 	}
 
 	if (stat(request.c_str(), &st) != 0) {
-		if (request.substr(request.length()-11).compare(string("index.hcrux")) == 0) {
+		if (request.length() >= 11 && request.substr(request.length()-11).compare(string("index.hcrux")) == 0) {
 			request = request.substr(0,request.length()-4).append(string("tml"));
 		}
 	}
 
+
 	
-	if ((stat(request.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) && !(crux_ && request.find(".crux")!=string::npos)) {
+	if ((stat(request.c_str(), &st) != 0 || S_ISDIR(st.st_mode)) && !(crux_ && request.find(".crux")!=string::npos) && !(crux_ && request.find(".php")!=string::npos)) {
+//skipIndexCheck:
 #ifdef DEBUGFAIL
 		cout << "failed to get resource " << request << endl;
 #endif
@@ -326,7 +338,10 @@ skipcrux:
 				if (!strncmp(request.substr(leng-len).c_str(), cruxExtenstions[i].ext, len)) {
                                 	cruxType =cruxExtenstions[i].type;
                                 	break;
-                        	}
+                        	} else if (request.find(".php?") != string::npos) {
+					cruxType = kCruxSock;
+					break;
+				}
 			}
 			switch (cruxType) {
 				case kCruxSock:{
@@ -337,17 +352,24 @@ skipcrux:
 					else
 						tmpr+="/sock";
 					unSock->connect((char *)tmpr.c_str());
-					unSock->send(requestp);
+					unSock->send(buffer);
 					int bs = 1024;
-					char *abs = (char *)calloc(1,bs);
-					int rt = recv(*(unSock->socket_),abs,bs,0);
-					if (rt <= 0) {
+					int rt = 0;
+					string abs("");
+					do {
+						char *aabs = (char *)calloc(1,bs);
+						rt = recv(*(unSock->socket_),aabs,bs,0);
+						if (strlen(aabs) == 0)
+							continue;
+						abs += aabs;
+						free(aabs);
+					} while (rt > 0);
+					if (abs.length() == 0) {
 						asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Goodbye World</body></html>"));
 					} else {
-						asock_->send(string(abs));
+						asock_->send(abs);
 					}
 					delete unSock;
-					free(abs);
 					break;
 				}
 				case kCruxText:{
@@ -414,7 +436,6 @@ branchRegular:
 #endif
 		
 			asock_->send(header);
-	
 			asock_->sendFile(request);
 
 		}
@@ -427,7 +448,6 @@ branchRegular:
 	close(sock);
 #endif
 	delete asock_;
-	free(buffer);
 	return NULL;
 }
 
