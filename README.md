@@ -1,6 +1,4 @@
-CRUENTUS
-========
-
+# CRUENTUS
 Cruentus is a next generation web server (lulz not really i suck at coding)
 
 Cruentus was created because:
