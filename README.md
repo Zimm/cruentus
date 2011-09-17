@@ -1,10 +1,10 @@
 CRUENTUS
 ========
-> Cruentus is a next generation web server (lulz not really i suck at coding)
-> Cruentus was created because 
-> > 1. I wanted to learn many new programming ideas
-> > 2. I was tired of using a server that I didn't know the code to
-> > 3. I feel like the other servers are much too bloated for what I wanted
+Cruentus is a next generation web server (lulz not really i suck at coding)
+Cruentus was created because 
+1. I wanted to learn many new programming ideas
+2. I was tired of using a server that I didn't know the code to
+3. I feel like the other servers are much too bloated for what I wanted
 
 CAPABILITIES
 ============
