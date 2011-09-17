@@ -17,7 +17,7 @@ void pipesignal(int sig) {
 
 int main(int argc, char **argv) {
 	uint16_t aport = 7331;
-	string *conf_file = new string("./cruentus.conf");
+	string *conf_file = new string("/etc/cruentus/cruentus.conf");
 
 	for (int i = 1; i < argc; i++) {
 	
