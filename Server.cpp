@@ -208,22 +208,20 @@ void *server(void *socket) {
 			Socket *unSock = new Socket();			
 			unSock->connect((char *)"localhost", out);
 			unSock->send(buffer);
+			int *stuff = (int *)calloc(1,sizeof(int)*2);
+			stuff[0] = sock;
+			stuff[1] = *(unSock->socket_);
+			
 			int bs = 1024;
 			int rt = 0;
-			string abs("");
 			do {
 				char *aabs = (char *)calloc(1,bs);
 				rt = recv(*(unSock->socket_),aabs,bs,0);
 				if (strlen(aabs) == 0)
 					continue;
-				abs += aabs;
+				asock_->send(string(aabs));
 				free(aabs);
 			} while (rt > 0);
-			if (abs.length() == 0) {
-				asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Goodbye World</body></html>"));
-			} else {
-				asock_->send(abs);
-			}
 			delete unSock;
 			close(sock);
 			delete asock_;
