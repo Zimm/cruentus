@@ -198,6 +198,9 @@ void *server(void *socket) {
 				removePath = apath;
 			}
 		}
+		if (path[0] == ':') {
+			// then it wants to port forward, hold on boys
+		}
 		if (chdir(path.c_str()) != 0) {
 			cout << "Failed to chdir(" << path << ")" << endl;
 		} 
