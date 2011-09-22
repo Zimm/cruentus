@@ -225,6 +225,8 @@ void *server(void *socket) {
 				asock_->send(abs);
 			}
 			delete unSock;
+			delete asock_;
+        		return NULL;
 		}
 		if (chdir(path.c_str()) != 0) {
 			cout << "Failed to chdir(" << path << ")" << endl;
