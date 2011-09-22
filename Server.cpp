@@ -105,6 +105,8 @@ void replace(string &str, const string &find_what, const string &replace_with)
 	}
 }
 
+void *socket_forward(void *sockets);
+
 void *server(void *socket) {
 	int sock = *((int*)socket);
 	Socket *asock_= new Socket(sock);
@@ -212,20 +214,21 @@ void *server(void *socket) {
 			stuff[0] = sock;
 			stuff[1] = *(unSock->socket_);
 			
-			int bs = 1024;
-			int rt = 0;
-			do {
-				char *aabs = (char *)calloc(1,bs);
-				rt = recv(*(unSock->socket_),aabs,bs,0);
-				if (strlen(aabs) == 0)
-					continue;
-				asock_->send(string(aabs));
-				free(aabs);
-			} while (rt > 0);
+			pthread_t newThread1;
+			int rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
+			if (rc){
+         			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+			}
+			stuff[0] = *(unSock->socket_);
+			stuff[1] = sock;
+			rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
+			if (rc){
+				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+			}
 			delete unSock;
 			close(sock);
 			delete asock_;
-        		return NULL;
+        	return NULL;
 		}
 		if (chdir(path.c_str()) != 0) {
 			cout << "Failed to chdir(" << path << ")" << endl;
@@ -477,6 +480,32 @@ branchRegular:
 	close(sock);
 #endif
 	delete asock_;
+	return NULL;
+}
+
+void *socket_forward(void *sockets) {
+	
+	int *fds = (int *)sockets;
+	
+	Socket *asock_ = new Socket(fds[0]);
+	Socket *unSock = new Socket(fds[1]);
+	
+	int bs = 1024;
+	int rt = 0;
+	do {
+		char *aabs = (char *)calloc(1,bs);
+		rt = recv(*(unSock->socket_),aabs,bs,0);
+		if (strlen(aabs) == 0)
+			continue;
+		asock_->send(string(aabs));
+		free(aabs);
+	} while (rt > 0);
+	
+	delete asock_;
+	delete unSock;
+	close(fds[0]);
+	close(fds[1]);
+	free(fds);
 	return NULL;
 }
 

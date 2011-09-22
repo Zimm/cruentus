@@ -27,6 +27,7 @@ class Socket {
                 void accept();
 		void send(std::string message);
 		bool sendFile(std::string file);
+		void close();
 };
 
 void server_setEcho(bool e);
