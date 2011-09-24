@@ -70,7 +70,7 @@ Socket::~Socket() {
 }
 
 Socket::close() {
-	close (*socket_);
+	::close(*socket_);
 }
 
 bool Socket::bind() {
@@ -183,7 +183,7 @@ void Socket::accept(void *(*start_routine)(void*)) {
 		}
 #ifdef TESTSOCK
 		if (openedSocket != lastSocket) {
-			close(lastSocket);
+			::close(lastSocket);
 			lastSocket = openedSocket;
 		}
 #endif
@@ -255,7 +255,7 @@ bool Socket::sendFile(std::string file) {
 	struct stat st;
 	if (stat(file.c_str(), &st) != 0) {
 		cout << "No file found at " << file << endl;
-		close(filed);
+		::close(filed);
 		return false;
 	}
 	sendfile(socket, filed, NULL, st.st_size);
@@ -264,7 +264,7 @@ bool Socket::sendFile(std::string file) {
 #ifdef DEBUG
 	cout << "Sent " << leng << " bytes" << endl;
 #endif
-	close(filed);
+	::close(filed);
 	return true;
 }
 
