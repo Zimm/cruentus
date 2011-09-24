@@ -223,7 +223,7 @@ void *server(void *socket) {
 				aabs[bs] = '\0';
 				if (strlen(aabs) == 0)
 					continue;
-				asock_->send(string(aabs));
+				rt = ::send(sock,aabs,bs,0);
 				free(aabs);
 			} while (rt > 0);
 			close(*(unSock->socket_));
