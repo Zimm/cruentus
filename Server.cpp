@@ -227,6 +227,7 @@ void *server(void *socket) {
 				arett += aabs;
 				free(aabs);
 			} while (rt > 0);
+			cout << "sending " << arett << endl;
 			asock_->send(arett);
 			close(*(unSock->socket_));
 			delete unSock;
