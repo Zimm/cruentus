@@ -403,6 +403,8 @@ skipcrux:
 						fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 					}
 					delete unSock;
+					delete asock_;
+					return NULL;
 					break;
 				}
 				case kCruxText:{
