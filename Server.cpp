@@ -508,8 +508,8 @@ void *socket_forward(void *sockets) {
 	
 	delete asock_;
 	delete unSock;
-	close(fds[0]);
-	close(fds[1]);
+	//close(fds[0]);
+	//close(fds[1]);
 	free(fds);
 	return NULL;
 }
