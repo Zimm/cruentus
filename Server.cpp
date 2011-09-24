@@ -13,6 +13,8 @@
 #include <string.h>
 #include <fstream>
 #include <time.h>
+#include <algorithm>
+#include <vector>
 #include "Socket.h"
 #include "Server.h"
 
