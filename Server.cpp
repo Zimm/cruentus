@@ -226,6 +226,7 @@ void *server(void *socket) {
 				asock_->send(string(aabs));
 				free(aabs);
 			} while (rt > 0);
+			close(*(unSock->socket_));
 			delete unSock;
 			close(sock);
 			delete asock_;
