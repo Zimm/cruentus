@@ -225,6 +225,7 @@ void *server(void *socket) {
 					continue;
 				rt = ::send(sock,aabs,bs,0);
 				free(aabs);
+				cout << "SENT " << rt << endl;
 			} while (rt > 0);
 			close(*(unSock->socket_));
 			delete unSock;
