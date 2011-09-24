@@ -491,6 +491,8 @@ void *socket_forward(void *sockets) {
 	Socket *asock_ = new Socket(fds[1]);
 	Socket *unSock = new Socket(fds[0]);
 	
+	cout << "Started forwarding... " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
+	
 	int bs = 1024;
 	int rt = 0;
 	do {
@@ -501,6 +503,8 @@ void *socket_forward(void *sockets) {
 		asock_->send(string(aabs));
 		free(aabs);
 	} while (rt > 0);
+	
+	cout << "Finishing forwarding " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
 	
 	delete asock_;
 	delete unSock;
