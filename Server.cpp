@@ -109,6 +109,9 @@ void replace(string &str, const string &find_what, const string &replace_with)
 
 void *socket_forward(void *sockets);
 
+static vector<int> *readyToClose = new vector<int>;
+
+
 void *server(void *socket) {
 	int sock = *((int*)socket);
 	Socket *asock_= new Socket(sock);
@@ -390,26 +393,20 @@ skipcrux:
 						tmpr+="/sock";
 					unSock->connect((char *)tmpr.c_str());
 					unSock->send(buffer);
-					int *stuff = (int *)calloc(1,sizeof(int)*3);
-					stuff[0] = sock;
-					stuff[1] = *(unSock->socket_);
-					stuff[2] = 1;
-					pthread_t newThread1;
-					int rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
-					if (rc){
-		         			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
-					}
-					int *stuff1 = (int *)calloc(1,sizeof(int)*3);
-					stuff1[0] = *(unSock->socket_);
-					stuff1[1] = sock;
-					stuff1[2] = 0;
-					rc = pthread_create(&newThread1, NULL, socket_forward, stuff1);
-					if (rc){
-						fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
-					}
+					
+					int bs = 1024;
+					int rt = 0;
+					do {
+						char *aabs = (char *)calloc(1,bs+1);
+						rt = recv(*(unSock->socket_),aabs,bs,0);
+						aabs[bs] = '\0';
+						if (strlen(aabs) == 0)
+							continue;
+						asock_->send(string(aabs));
+						free(aabs);
+					} while (rt > 0);
+					
 					delete unSock;
-					delete asock_;
-					return NULL;
 					break;
 				}
 				case kCruxText:{
@@ -490,8 +487,6 @@ branchRegular:
 	delete asock_;
 	return NULL;
 }
-
-static vector<int> *readyToClose = new vector<int>;
 
 void *socket_forward(void *sockets) {
 	
