@@ -210,19 +210,20 @@ void *server(void *socket) {
 			Socket *unSock = new Socket();			
 			unSock->connect((char *)"localhost", out);
 			unSock->send(buffer);
-			int *stuff = (int *)calloc(1,sizeof(int)*2);
+			int *stuff = (int *)calloc(1,sizeof(int)*3);
 			stuff[0] = sock;
 			stuff[1] = *(unSock->socket_);
-			
+			stuff[2] = 1;
 			pthread_t newThread1;
 			int rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
 			if (rc){
          			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 			}
 			
-			int *stuff1 = (int *)calloc(1,sizeof(int)*2);
+			int *stuff1 = (int *)calloc(1,sizeof(int)*3);
 			stuff1[0] = *(unSock->socket_);
 			stuff1[1] = sock;
+			stuff1[2] = 0;
 			rc = pthread_create(&newThread1, NULL, socket_forward, stuff1);
 			if (rc){
 				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
@@ -387,17 +388,19 @@ skipcrux:
 						tmpr+="/sock";
 					unSock->connect((char *)tmpr.c_str());
 					unSock->send(buffer);
-					int *stuff = (int *)calloc(1,sizeof(int)*2);
+					int *stuff = (int *)calloc(1,sizeof(int)*3);
 					stuff[0] = sock;
 					stuff[1] = *(unSock->socket_);
+					stuff[2] = 1;
 					pthread_t newThread1;
 					int rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
 					if (rc){
 		         			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 					}
-					int *stuff1 = (int *)calloc(1,sizeof(int)*2);
+					int *stuff1 = (int *)calloc(1,sizeof(int)*3);
 					stuff1[0] = *(unSock->socket_);
 					stuff1[1] = sock;
+					stuff1[2] = 0;
 					rc = pthread_create(&newThread1, NULL, socket_forward, stuff1);
 					if (rc){
 						fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
@@ -486,6 +489,8 @@ branchRegular:
 	return NULL;
 }
 
+static vector<int> *readyToClose = new vector<int>;
+
 void *socket_forward(void *sockets) {
 	
 	int *fds = (int *)sockets;
@@ -510,6 +515,23 @@ void *socket_forward(void *sockets) {
 	
 	delete asock_;
 	delete unSock;
+	
+	vector<int>::iterator result1, result2;
+
+	result1 = std::find(readyToClose->begin(), readyToClose->end(), fds[0]);
+	result2 = std::find(readyToClose->begin(), readyToClose->end(), fds[1]);
+
+	if (result1 != readyToClose->end()) {
+		close(fds[0]);
+	} else {
+		readyToClose->push_back(fds[0]);
+	}
+
+   	if (result2 != readyToClose->end()) {
+		close(fds[1]);
+	} else {
+		readyToClose->push_back(fds[1]);
+	}
 	//close(fds[0]);
 	//close(fds[1]);
 	free(fds);
