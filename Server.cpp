@@ -229,7 +229,8 @@ void *server(void *socket) {
 				cout << "asdf " << (int)arett[arett.length()-2] << " " << (int)arett[arett.length()-1] << endl;
 				free(aabs);
 			} while (rt > 0);
-			cout << "sending " << arett << endl;
+			cout << "sending arett now is " << arett.length() << endl;
+			cout << "sending asdf " << (int)arett[arett.length()-2] << " " << (int)arett[arett.length()-1] << endl;
 			asock_->send(arett);
 			close(*(unSock->socket_));
 			delete unSock;
