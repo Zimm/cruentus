@@ -69,7 +69,7 @@ Socket::~Socket() {
 	delete socket_;
 }
 
-Socket::close() {
+void Socket::close() {
 	::close(*socket_);
 }
 
