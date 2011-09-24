@@ -506,7 +506,7 @@ void *socket_forward(void *sockets) {
 			continue;
 		asock_->send(string(aabs));
 		free(aabs);
-	} while (rt > 0);
+	} while (rt >= 0);
 	
 	cout << "Finishing forwarding " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
 	
