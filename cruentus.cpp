@@ -42,6 +42,12 @@ int main(int argc, char **argv) {
 		} else if (strncmp(argv[i], "--crux", 6) == 0) {
 			cout << "Creating crux server...." << endl;
 			server_setCrux(true);
+		} else if (strncmp(argv[i], "--daemon", 8) == 0) {
+			int forker = fork();
+			if (forker != 0) {
+				cout << "Forking into "<< forker << " process" << endl;
+				exit(0);
+			}
 		} else {
 			cout << "Illiegal option " << argv[i] << endl;
 			exit(-1);
