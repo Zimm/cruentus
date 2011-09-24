@@ -219,9 +219,11 @@ void *server(void *socket) {
 			if (rc){
          			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 			}
-			stuff[0] = *(unSock->socket_);
-			stuff[1] = sock;
-			rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
+			
+			int *stuff1 = (int *)calloc(1,sizeof(int)*2);
+			stuff1[0] = *(unSock->socket_);
+			stuff1[1] = sock;
+			rc = pthread_create(&newThread1, NULL, socket_forward, stuff1);
 			if (rc){
 				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 			}
@@ -385,21 +387,20 @@ skipcrux:
 						tmpr+="/sock";
 					unSock->connect((char *)tmpr.c_str());
 					unSock->send(buffer);
-					int bs = 1024;
-					int rt = 0;
-					string abs("");
-					do {
-						char *aabs = (char *)calloc(1,bs);
-						rt = recv(*(unSock->socket_),aabs,bs,0);
-						if (strlen(aabs) == 0)
-							continue;
-						abs += aabs;
-						free(aabs);
-					} while (rt > 0);
-					if (abs.length() == 0) {
-						asock_->send(string("HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body>Goodbye World</body></html>"));
-					} else {
-						asock_->send(abs);
+					int *stuff = (int *)calloc(1,sizeof(int)*2);
+					stuff[0] = sock;
+					stuff[1] = *(unSock->socket_);
+					pthread_t newThread1;
+					int rc = pthread_create(&newThread1, NULL, socket_forward, stuff);
+					if (rc){
+		         			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+					}
+					int *stuff1 = (int *)calloc(1,sizeof(int)*2);
+					stuff1[0] = *(unSock->socket_);
+					stuff1[1] = sock;
+					rc = pthread_create(&newThread1, NULL, socket_forward, stuff1);
+					if (rc){
+						fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 					}
 					delete unSock;
 					break;
