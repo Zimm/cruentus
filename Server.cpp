@@ -217,16 +217,17 @@ void *server(void *socket) {
 			unSock->send(buffer);
 			int bs = 1024;
 			int rt = 0;
+			string arett("");
 			do {
 				char *aabs = (char *)calloc(1,bs+1);
 				rt = recv(*(unSock->socket_),aabs,bs,0);
 				aabs[bs] = '\0';
 				if (strlen(aabs) == 0)
 					continue;
-				rt = ::send(sock,aabs,bs,0);
+				arett += aabs;
 				free(aabs);
-				cout << "SENT " << rt << endl;
 			} while (rt > 0);
+			asock_->send(arett);
 			close(*(unSock->socket_));
 			delete unSock;
 			close(sock);
