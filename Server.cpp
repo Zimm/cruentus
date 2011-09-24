@@ -225,6 +225,7 @@ void *server(void *socket) {
 				if (strlen(aabs) == 0)
 					continue;
 				arett += aabs;
+				cout << "arett now is " << arett << endl;
 				free(aabs);
 			} while (rt > 0);
 			cout << "sending " << arett << endl;
