@@ -487,8 +487,8 @@ void *socket_forward(void *sockets) {
 	
 	int *fds = (int *)sockets;
 	
-	Socket *asock_ = new Socket(fds[0]);
-	Socket *unSock = new Socket(fds[1]);
+	Socket *asock_ = new Socket(fds[1]);
+	Socket *unSock = new Socket(fds[0]);
 	
 	int bs = 1024;
 	int rt = 0;
