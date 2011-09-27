@@ -180,6 +180,7 @@ void Socket::accept(void *(*start_routine)(void*)) {
 		int openedSocket = ::accept(*socket_, (struct sockaddr *)&inAddress, (socklen_t *)&socklen);
 		if (openedSocket < 0) {
 			fprintf(stderr, "Failed to accept incoming socket\n");
+			continue;
 		}
 #ifdef TESTSOCK
 		if (openedSocket != lastSocket) {
@@ -198,7 +199,8 @@ void Socket::accept(void *(*start_routine)(void*)) {
 			int rc = pthread_create(&newThread, NULL, start_routine, new int(openedSocket));
 			if (rc){
          			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
-				exit(-1);
+				//exit(-1);
+				::close(openedSocket);
 			}
 #else
 			start_routine((void*)&openedSocket);
