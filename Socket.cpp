@@ -52,16 +52,14 @@ Socket::Socket(int fd) {
 
 
 Socket::Socket(int domain, int type, int protocol) {
-
 	socket_ = new int;
-
-        int sock_descriptor = socket(domain, type, protocol);
-        if (sock_descriptor == -1) {
-                fprintf(stderr, "Failed to open custom socket\n");
-                errno = 43;
-        }
-
-        *socket_ = sock_descriptor;
+	int sock_descriptor = socket(domain, type, protocol);
+	if (sock_descriptor == -1) {
+		perror("ERROR: ");
+		fprintf(stderr, "Failed to open custom socket %i\n", errno);
+		errno = 43;
+	}
+	*socket_ = sock_descriptor;
 	errno = 0;
 }
 
@@ -103,9 +101,11 @@ bool Socket::connect(char *path) {
 	strcpy(remote.sun_path, path);
 	size_t len = strlen(remote.sun_path) + sizeof(remote.sun_family);
 	if (::connect(*socket_, (struct sockaddr *)&remote, len) == -1) {
-        	fprintf(stderr, "Failed to connect %i\n", errno);
-        	return false;
-    	}
+		char *cwd = getcwd(NULL, 0);
+		fprintf(stderr, "Failed to connect to %s/%s %i\n", cwd, path, errno);
+		free(cwd);
+		return false;
+	}
 #ifdef DEBUG
 	cout << "Connected to file " << remote.sun_path << endl;
 #endif
