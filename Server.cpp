@@ -226,7 +226,7 @@ void *server(void *socket) {
 			pthread_t newThread;
 			pthread_t newThread1;
 			if (pthread_create(&newThread, NULL, socket_forward, stuff)) {
-				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", errno);
 				perror("THREAD ERROR");
 				::close(*(unSock->socket_));
 				::close(sock);
@@ -235,7 +235,7 @@ void *server(void *socket) {
 	        	return NULL;
 			}
 			if (pthread_create(&newThread1, NULL, socket_forward, stuff1)) {
-				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", errno);
 				perror("THREAD ERROR");
 				::close(*(unSock->socket_));
 				::close(sock);
