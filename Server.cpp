@@ -491,28 +491,22 @@ branchRegular:
 void *socket_forward(void *sockets) {
 	
 	int *fds = (int *)sockets;
-	
-	Socket *asock_ = new Socket(fds[1]);
-	Socket *unSock = new Socket(fds[0]);
-	
+		
 	cout << "Started forwarding... " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
 	
 	int bs = 1024;
 	int rt = 0;
 	do {
 		char *aabs = (char *)calloc(1,bs);
-		rt = recv(*(unSock->socket_),aabs,bs,0);
+		rt = recv(fds[0],aabs,bs,0);
 		if (strlen(aabs) == 0)
 			continue;
-		asock_->send(string(aabs));
+		::send(fds[1],aabs,rt,0);
 		free(aabs);
 	} while (rt >= 0);
 	
 	cout << "Finishing forwarding " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
-	
-	delete asock_;
-	delete unSock;
-	
+		
 	vector<int>::iterator result1, result2;
 
 	result1 = std::find(readyToClose->begin(), readyToClose->end(), fds[0]);
