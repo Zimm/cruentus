@@ -11,20 +11,21 @@
 
 class Socket {
 	public:
-                int *socket_;
-                Socket(int domain, int type, int protocol);
+		int *socket_;
+		bool dontCloseWhenDeleted; //inherently false
+		Socket(int domain, int type, int protocol);
 		Socket();
 		Socket(int fd);
-                ~Socket();
-                bool bind();
-                bool bind(uint16_t port);
+		~Socket();
+		bool bind();
+		bool bind(uint16_t port);
 		bool bind(char *path);
 		bool connect(char *path);
-                bool connect(char *url, uint16_t port);
+		bool connect(char *url, uint16_t port);
 		bool listen();
-                bool listen(int backlog);
-                void accept(void *(*start_routine)(void*));
-                void accept();
+		bool listen(int backlog);
+		void accept(void *(*start_routine)(void*));
+		void accept();
 		void send(std::string message);
 		bool sendFile(std::string file);
 		void close();

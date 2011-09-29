@@ -64,6 +64,8 @@ Socket::Socket(int domain, int type, int protocol) {
 }
 
 Socket::~Socket() {
+	if (!dontCloseWhenDeleted)
+		close();
 	delete socket_;
 }
 

@@ -246,6 +246,8 @@ void *server(void *socket) {
 				delete asock_;
 	        	return NULL;
 			}
+			unSock->dontCloseWhenDeleted = true;
+			asock_->dontCloseWhenDeleted = true;
 			delete unSock;
 			delete asock_;
         	return NULL;
