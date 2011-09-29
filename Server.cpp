@@ -209,8 +209,7 @@ void *server(void *socket) {
 		}
 		size_t wherecolon = path.find(":");
 		if (wherecolon != string::npos && wherecolon != path.length()-1) {
-			path.erase(0,1);
-			string ports = path.substr(wherecolon);
+			string ports = path.substr(wherecolon+1);
 			uint16_t out;
 			stringstream as;
 			as << ports;
