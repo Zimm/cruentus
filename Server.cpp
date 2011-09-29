@@ -216,7 +216,7 @@ void *server(void *socket) {
 			as << ports;
 			as >> out;
 			string place1 = wherecolon == 0 ? "localhost" : path.erase(wherecolon);
-			cout << :"Forwarding to place" << place1 << ":" << out << endl;
+			cout << "Forwarding to place" << place1 << ":" << out << endl;
 			// then it wants to port forward, hold on boys
 			Socket *unSock = new Socket();			
 			unSock->connect((char *)place1.c_str(), out);
