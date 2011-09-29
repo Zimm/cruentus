@@ -217,26 +217,33 @@ void *server(void *socket) {
 			Socket *unSock = new Socket();			
 			unSock->connect((char *)"localhost", out);
 			unSock->send(buffer);
-			int bs = 1024;
-			int rt = 0;
-			string arett("");
-			do {
-				char *aabs = (char *)calloc(1,bs+1);
-				rt = recv(*(unSock->socket_),aabs,bs,0);
-				aabs[bs] = '\0';
-				if (strlen(aabs) == 0)
-					continue;
-				arett += aabs;
-				cout << "arett now is " << arett.length() << endl;
-				cout << "asdf " << (int)arett[arett.length()-2] << " " << (int)arett[arett.length()-1] << endl;
-				free(aabs);
-			} while (rt > 0);
-			cout << "sending arett now is " << arett.length() << endl;
-			cout << "sending asdf " << (int)arett[arett.length()-2] << " " << (int)arett[arett.length()-1] << endl;
-			asock_->send(arett);
-			close(*(unSock->socket_));
+			int *stuff = (int *)calloc(1,sizeof(int)*2);
+			stuff[0] = sock;
+			stuff[1] = *(unSock->socket_);
+			int *stuff1 = (int *)calloc(1,sizeof(int)*2);
+			stuff1[0] = *(unSock->socket_);
+			stuff1[1] = sock;
+			pthread_t newThread;
+			pthread_t newThread1;
+			if (pthread_create(&newThread, NULL, socket_forward, stuff)) {
+				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+				perror("THREAD ERROR");
+				::close(*(unSock->socket_));
+				::close(sock);
+				delete unSock;
+				delete asock_;
+	        	return NULL;
+			}
+			if (pthread_create(&newThread1, NULL, socket_forward, stuff1)) {
+				fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+				perror("THREAD ERROR");
+				::close(*(unSock->socket_));
+				::close(sock);
+				delete unSock;
+				delete asock_;
+	        	return NULL;
+			}
 			delete unSock;
-			close(sock);
 			delete asock_;
         	return NULL;
 		}
