@@ -15,6 +15,8 @@
 #include <time.h>
 #include <algorithm>
 #include <vector>
+#include <errno.h>
+#include <cerrno>
 #include "Socket.h"
 #include "Server.h"
 
@@ -491,21 +493,41 @@ branchRegular:
 void *socket_forward(void *sockets) {
 	
 	int *fds = (int *)sockets;
+	
+	int from = fds[0];
+	int to = fds[1];
+	
+	cout << "Started forwarding... " << from << " and " << to << endl;
 		
-	cout << "Started forwarding... " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
+	char buf[8192];
+	ssize_t rc;
+	ssize_t amt;
+	ssize_t offset;
+
+	while (1) {
+		rc = read(from, buf, sizeof(buf));
+		if (rc <= 0) {
+			if (rc == 0) break;
+			if (errno == EINTR || errno == EAGAIN) continue;
+			perror("read error");
+			break;
+		}
+		offset = 0;
+		amt = rc;
+		while (amt) {
+			rc = write(to, buf+offset, amt);
+			if (rc < 0) {
+				if (errno == EINTR || errno == EAGAIN) continue;
+				perror("write error");
+				break;
+			}
+			offset += rc;
+			amt -= rc;
+		}
+	}
 	
-	int bs = 1024;
-	int rt = 0;
-	do {
-		char *aabs = (char *)calloc(1,bs);
-		rt = recv(fds[0],aabs,bs,0);
-		if (strlen(aabs) == 0)
-			continue;
-		::send(fds[1],aabs,rt,0);
-		free(aabs);
-	} while (rt >= 0);
 	
-	cout << "Finishing forwarding " << *(asock_->socket_) << " and " << *(unSock->socket_) << endl;
+	cout << "Finishing forwarding " << from << " and " << to << endl;
 		
 	vector<int>::iterator result1, result2;
 
