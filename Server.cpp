@@ -207,15 +207,18 @@ void *server(void *socket) {
 				removePath = apath;
 			}
 		}
-		if (path[0] == ':') {
+		size_t wherecolon = path.find(":");
+		if (wherecolon != string::npos && wherecolon != path.length()-1) {
 			path.erase(0,1);
+			string ports = path.substr(wherecolon+1);
 			uint16_t out;
 			stringstream as;
-			as << path;
+			as << ports;
 			as >> out;
+			string place1 = wherecolon == 0 ? "localhost" : path.erase(wherecolon);
 			// then it wants to port forward, hold on boys
 			Socket *unSock = new Socket();			
-			unSock->connect((char *)"localhost", out);
+			unSock->connect((char *)place1.c_str(), out);
 			unSock->send(buffer);
 			int *stuff = (int *)calloc(1,sizeof(int)*2);
 			stuff[0] = sock;
