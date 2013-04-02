@@ -1,5 +1,2 @@
 .DS_Store
-build/
-test
-cruentus.conf
-*.log
+obj

@@ -1,24 +1,23 @@
-all:builddir libcruentus cruentus
+CC=gcc
+CFLAGS=-Wall -Werror -Wextra
+LDFLAGS=
+OBJ=cruentus.o
+OBJDIR=obj
+all: cruentus
 
-builddir:
-	@mkdir -p build/
+.PHONY: all clean cruentus $(OBJDIR)
 
-libcruentus: Socket.o
-	@echo "Building libcruentus...."
-	@g++ build/Socket.o -lpthread -shared -o build/libcruentus.a
+cruentus: $(OBJDIR)/cruentus
 
-Socket.o: Socket.cpp
-	g++ -c -Wall -Werror -O3 -fPIC -o build/Socket.o Socket.cpp
+$(OBJDIR)/cruentus: $(addprefix $(OBJDIR)/,$(OBJ))
+	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
-cruentus: cruentus.o Server.o
-	@echo "Building cruentus...."
-	@g++ build/Server.o build/cruentus.o -lpthread -lcruentus -o build/cruentus
+$(OBJDIR)/%.o: %.c
+	@mkdir -p $(OBJDIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
 
-cruentus.o: cruentus.cpp
-	g++ -c -O3 -Wall -Werror -o build/cruentus.o cruentus.cpp
-
-Server.o: Server.cpp
-	g++ -c -O3 -Wall -Werror -o build/Server.o Server.cpp
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
 clean:
-	rm -rf build/
+	rm -rf $(OBJDIR)
